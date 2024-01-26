@@ -24,7 +24,7 @@ use crate::{
     trace_dbg,
 };
 
-#[derive(Default, Clone, Serialize)]
+#[derive(Default, Clone, Serialize, Deserialize)]
 pub struct TodoItem {
     title: String,
 }
@@ -130,18 +130,30 @@ impl Component for Home {
     }
 
     fn buildup(&mut self) -> Result<()> {
-        let mut file = File::open("./.data/home.json")?;
-        let mut buffer = String::new();
-        file.read_to_string(&mut buffer)?;
-        let v: Value = serde_json::from_str(&buffer)?;
-        error!("{}", v);
+        let file = File::open("./.data/home.json");
 
-        Ok(())
+        match file {
+            serde::__private::Ok(_) => {
+                let mut buffer = String::new();
+                file?.read_to_string(&mut buffer)?;
+                let v: Vec<TodoItem> = serde_json::from_str(&buffer)?;
+
+                if v.len() > 0 {
+                    for todo_item in v.iter() {
+                        let new_todo: TodoItem = TodoItem::new(todo_item.title.to_string());
+                        self.todos.push(new_todo);
+                    }
+                }
+
+                Ok(())
+            }
+            Err(_) => return Ok(()),
+        }
     }
 
     fn teardown(&mut self) -> Result<()> {
-        let file = File::create("./.data/home.json")?;
-        let mut writer = BufWriter::new(file);
+        let file: File = File::create("./.data/home.json")?;
+        let mut writer: BufWriter<File> = BufWriter::new(file);
         serde_json::to_writer(&mut writer, &self.todos)?;
         writer.flush()?;
         Ok(())
@@ -166,7 +178,7 @@ impl Component for Home {
                     self.input_mode = Mode::Normal;
                 }
                 Action::AddTodo => {
-                    let new_todo = TodoItem::new(self.input.value().into());
+                    let new_todo: TodoItem = TodoItem::new(self.input.value().into());
                     self.input.reset();
                     self.todos.push(new_todo);
                     self.input_mode = Mode::Editing;
