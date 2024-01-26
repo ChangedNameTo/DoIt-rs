@@ -134,7 +134,7 @@ impl Component for Home {
         let mut buffer = String::new();
         file.read_to_string(&mut buffer)?;
         let v: Value = serde_json::from_str(&buffer)?;
-        log::debug!("{}", v);
+        error!("{}", v);
 
         Ok(())
     }

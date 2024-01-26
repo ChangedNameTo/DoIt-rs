@@ -9,6 +9,17 @@ use tracing_subscriber::{
     self, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt, Layer,
 };
 
+use log::{debug, info, trace, warn, LevelFilter, SetLoggerError};
+use log4rs::{
+    append::{
+        console::{ConsoleAppender, Target},
+        file::FileAppender,
+    },
+    config::{Appender, Config, Root},
+    encode::pattern::PatternEncoder,
+    filter::threshold::ThresholdFilter,
+};
+
 const VERSION_MESSAGE: &str = concat!(
     env!("CARGO_PKG_VERSION"),
     "-",
@@ -28,8 +39,6 @@ lazy_static! {
         std::env::var(format!("{}_CONFIG", PROJECT_NAME.clone()))
             .ok()
             .map(PathBuf::from);
-    pub static ref LOG_ENV: String = format!("{}_LOGLEVEL", PROJECT_NAME.clone());
-    pub static ref LOG_FILE: String = format!("{}.log", env!("CARGO_PKG_NAME"));
 }
 
 fn project_directory() -> Option<ProjectDirs> {
@@ -88,6 +97,47 @@ pub fn initialize_panic_handler() -> Result<()> {
     Ok(())
 }
 
+pub fn initialize_logging() -> Result<(), SetLoggerError> {
+    let level = log::LevelFilter::Info;
+    let file_path = "debug.log";
+
+    // Build a stderr logger.
+    let stderr = ConsoleAppender::builder().target(Target::Stderr).build();
+
+    // Logging to log file.
+    let logfile = FileAppender::builder()
+        .encoder(Box::new(PatternEncoder::new(
+            "{d(%Y-%m-%d %H:%M:%S)} {l} - {m}\n",
+        )))
+        .build(file_path)
+        .unwrap();
+
+    // Log Trace level output to file where trace is the default level
+    // and the programmatically specified level to stderr.
+    let config = Config::builder()
+        .appender(Appender::builder().build("logfile", Box::new(logfile)))
+        .appender(
+            Appender::builder()
+                .filter(Box::new(ThresholdFilter::new(level)))
+                .build("stderr", Box::new(stderr)),
+        )
+        .build(
+            Root::builder()
+                .appender("logfile")
+                .appender("stderr")
+                .build(LevelFilter::Trace),
+        )
+        .unwrap();
+
+    // Use this to change log levels at runtime.
+    // This means you can change the default log level to trace
+    // if you are trying to debug an issue and need more logs on then turn it off
+    // once you are done.
+    let _handle = log4rs::init_config(config)?;
+
+    Ok(())
+}
+
 pub fn get_data_dir() -> PathBuf {
     let directory = if let Some(s) = DATA_FOLDER.clone() {
         s
@@ -96,6 +146,7 @@ pub fn get_data_dir() -> PathBuf {
     } else {
         PathBuf::from(".").join(".data")
     };
+    error!("{:?}", directory);
     directory
 }
 
@@ -108,31 +159,6 @@ pub fn get_config_dir() -> PathBuf {
         PathBuf::from(".").join(".config")
     };
     directory
-}
-
-pub fn initialize_logging() -> Result<()> {
-    let directory = get_data_dir();
-    std::fs::create_dir_all(directory.clone())?;
-    let log_path = directory.join(LOG_FILE.clone());
-    let log_file = std::fs::File::create(log_path)?;
-    std::env::set_var(
-        "RUST_LOG",
-        std::env::var("RUST_LOG")
-            .or_else(|_| std::env::var(LOG_ENV.clone()))
-            .unwrap_or_else(|_| format!("{}=DEBUG", env!("CARGO_CRATE_NAME"))),
-    );
-    let file_subscriber = tracing_subscriber::fmt::layer()
-        .with_file(true)
-        .with_line_number(true)
-        .with_writer(log_file)
-        .with_target(false)
-        .with_ansi(false)
-        .with_filter(tracing_subscriber::filter::EnvFilter::from_default_env());
-    tracing_subscriber::registry()
-        .with(file_subscriber)
-        .with(ErrorLayer::default())
-        .init();
-    Ok(())
 }
 
 /// Similar to the `std::dbg!` macro, but generates `tracing` events rather
