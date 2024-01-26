@@ -59,6 +59,7 @@ impl App {
 
         for component in self.components.iter_mut() {
             component.init(tui.size()?)?;
+            component.buildup()?;
         }
 
         loop {
@@ -103,7 +104,15 @@ impl App {
                     Action::Tick => {
                         self.last_tick_key_events.drain(..);
                     }
-                    Action::Quit => self.should_quit = true,
+                    Action::Quit => {
+                        for component in self.components.iter_mut() {
+                            let r = component.teardown();
+                            if let Err(e) = r {
+                                panic!("Failed to quit properly")
+                            }
+                        }
+                        self.should_quit = true
+                    }
                     Action::Suspend => self.should_suspend = true,
                     Action::Resume => self.should_suspend = false,
                     Action::Resize(w, h) => {
@@ -148,6 +157,7 @@ impl App {
                 // tui.mouse(true);
                 tui.enter()?;
             } else if self.should_quit {
+                action_tx.send(Action::SaveAndClose)?;
                 tui.stop()?;
                 break;
             }

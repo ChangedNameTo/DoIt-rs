@@ -17,6 +17,14 @@ pub enum Action {
     Refresh,
     Error(String),
     Help,
+    SaveAndClose,
+
+    // Home Actions
     AddTodo,
-    ToggleCommandMode,
+    EnterCommandMode,
+    EnterBrowseMode,
+    EnterHelpMode,
+    ExitCurrentMode,
+    BrowseListUp,
+    BrowseListDown,
 }

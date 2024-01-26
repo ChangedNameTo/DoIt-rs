@@ -1,7 +1,7 @@
 {
   "keybindings": {
     "Home": {
-      "<i>": "ToggleCommandMode", // Swap to command mode
+      "<esc>": "ExitCurrentMode", // Exit to normal mode
       "<Ctrl-q>": "Quit", // Another way to quit
       "<Ctrl-d>": "Quit", // Another way to quit
       "<Ctrl-c>": "Quit", // Yet another way to quit

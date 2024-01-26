@@ -120,4 +120,16 @@ pub trait Component {
     ///
     /// * `Result<()>` - An Ok result or an error.
     fn draw(&mut self, f: &mut Frame<'_>, area: Rect) -> Result<()>;
+    /// Save the current saveable states to json, write to output directory
+    ///
+    /// # Returns
+    ///
+    /// * `Result<()>` - An Ok result or an error.
+    fn teardown(&mut self) -> Result<()>;
+    /// Loads the previous saveable state from json to the target struct
+    ///
+    /// # Returns
+    ///
+    /// * `Result<()>` - An Ok result or an error.
+    fn buildup(&mut self) -> Result<()>;
 }
